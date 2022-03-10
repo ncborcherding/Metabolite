@@ -1,0 +1,234 @@
+metabolite	TCA_cycle	Glycolysis	PPS	Purine_Degradation	Aspartate_metabolism	Glutamine_degradation	Carnitine	Urea cycle	CoFactor
+2-hydroxybutyrate									
+2-hydroxyglutarate									
+3-phosphoglycerate		1							
+Adenine									
+Adonitol									
+Alanine									
+alpha-keto-beta-methylvalerate (KMV)									
+alpha-ketoglutarate	1								
+alpha-ketoisocaproate (KIC)									
+alpha-ketoisovalerate (KIV)									
+Aminoadipate									
+Arachidic acid									
+Arachidonate									
+Asparagine									
+Aspartate	1				1	1		1	
+beta-alanine									
+beta-estradiol									
+beta-hydroxy-beta-methylbutyric acid									
+beta-hydroxybutyrate									
+Cholesterol									
+Cinnamate									
+Citraconate									
+Citrate	1								
+Citrulline								1	
+Cysteine									
+Cytidine									
+Dihydroxyacetone phosphate		1							
+Dihydroxyphenylalanine									
+3-Hydroxytyramine									
+Dulcitol									
+Erythrose									
+Fructose									
+Fructose 6-phosphate		1	1						
+Fumarate	1							1	
+Gamma-aminobutyric acid									
+Glucose		1							
+Glucose 6-phosphate		1	1						
+Glutamate					1	1			
+Glutamine						1			
+Glycerate									
+Glycerol									
+Glycerol monolaurate									
+Glycine									
+Guanine				1					
+Guanosine				1					
+Heptadecanoic acid									
+Histidine									
+Homocysteine									
+Homoserine									
+Hypotaurine									
+Hypoxanthine				1					
+Inotisol									
+Isocitrate	1								
+Isoleucine									
+Lactate		1							
+Lauric acid									
+Leucine									
+Linoleate									
+Linolenic acid									
+Lysine									
+Malate	1				1				
+Malonate									
+Mannitol									
+Mannose									
+Methionine									
+Myristic acid									
+N-acetylaspartate									
+N-acetylglutamate								1	
+N-acetylglutamine									
+N-acetyltyrosine									
+N-acetylvaline									
+Oleic acid									
+O-phosphoethanolamine									
+O-phosphoserine									
+Ornithine								1	
+Orotate									
+Palmitate									
+Phenylalanine									
+Phosphoenolpyruvate		1							
+Pimelate									
+Proline									
+Prostaglandin E2									
+Pterin									
+Pyruvate		1			1				
+Ribose									
+Ribose 5-phosphate			1						
+Sedoheptulose									
+Serine									
+Serotonin									
+Sphingosine									
+Stearate									
+Succinate	1								
+Taurine									
+Threonine									
+Thymidine									
+Thymine									
+Tryptophan									
+Tyrosine									
+Uracil									
+Urea								1	
+Uridine									
+Valine									
+Xanthine				1					
+Xylose									
+_-Nicotinamide adenine dinucleotide									1
+_-Nicotinamide adenine dinucleotide phosphate									1
+(3-Carboxypropyl)trimethylammonium									
+1-Methylnicotinamide									
+2-Aminoadipic acid									
+2-Oxoadipic acid									
+3-Methyladenine									
+3-Phosphoglyceric acid									
+3-Ureidopropionic acid									
+"3,4-Dihydroxyphenylacetic acid"									
+4-Aminobutanoate									
+4-Hydroxybenzaldehyde									
+4-Hydroxybenzoic acid									
+4-Imidazoleacetic acid									
+4-Imidazoleacrylic acid									
+6-phosphogluconate			1						
+"7,8-Dihydro-biopterin"									
+Acetoacetate									
+Acetyl-CoA	1								
+Acetylcarnitine							1		
+Acontitate									
+Adenosine				1					
+"Adenosine 3',5'-cyclic monophosphate"				1					1
+"Adenosine 3',5'-diphosphate"									1
+Adenosine 5'-diphosphoribose									
+Adenosine 5'-monophosphate									
+Adenosine 5'-triphosphate									1
+Allantoin									
+allo-Threonine									
+Anserine									
+Arachidonyl Carnitine							1		
+Arginine								1	
+Azelaic acid									
+Benzoate									
+Betaine									
+Butyric acid									
+Butyryl-carnitine							1		
+Carnitine							1		
+Carnosine									
+CDP-ethanolamine									
+Cholic Acid									
+Citramalate									
+Coenzyme A									
+Creatine									
+Creatine phosphate									
+Cystathionine									
+Cytidine 5'-diphosphate									
+Cytidine 5'-diphosphocholine									
+Cytidine 5'-monophosphate									
+Cytidine 5'-triphosphate									
+Decanoyl-carnitine							1		
+Dehydroascorbic acid									
+Dihydronicotinamide adenine dinucleotide (NADH)									1
+Dihydronicotinamide adenine dinucleotide phosphate (NADPH)									1
+Dihydroorotic acid									
+Flavin adenine dinucleotide									
+Gluconic acid									
+Glutaryl-carnitine									
+GSH									1
+GSSG									1
+Guanosine 5'-diphosphate									1
+Guanosine 5'-monophosphate									1
+Guanosine 5'-triphosphate									1
+Hexanoic acid									
+Hexanoyl-carnitine							1		
+Homovanillic acid									
+Indole-3-pyruvic acid									
+Indoxyl sulfate									
+Inosine				1					
+Inosine 5'-monophosphate									
+Isocitric Acid									
+Itaconic acid									
+Lauroyl-carnitine									
+Maleic acid									
+Malonyl-CoA									
+Methylmalonic acid									
+Myristoyl-carnitine							1		
+N-acetylalanine									
+N-Acetylcysteine									
+N-Acetylleucine									
+N-acetylneuraminate									
+N-Acetylproline									
+N-Acetylserine									
+N-Acetylglycine									
+N-Formylmethionine									
+N-Formylglycine									
+N-Methylaspartate									
+N-Methylglutamate									
+N-Acetylasparagine									
+N-Acetyllysine									
+Nicotinamide									
+Nicotinate									
+O-Acetylserine									
+O-Phosphorylethanolamine									
+Octanoyl-carnitine							1		
+Oleoyl-carnitine							1		
+Oxalate									
+Palmitoyl-carnitine							1		
+Pantothenic acid									
+PEPA									
+Phosphocholine									
+Phosphonoacetate									
+Pipecolate									
+Propionate									
+Propionyl-carnitine							1		
+Pyroglutamic acid									
+Pyruvic Acid									
+Ribulose 5-phosphate				1					
+S-(5'-Adenosyl)-homocysteine									
+S-(5'-Adenosyl)-methionine									
+Sarcosine									
+Sebacic acid									
+Glycerol 3-phosphate									
+Stearoyl-carnitine							1		
+Suberic acid									
+Tartaric acid									
+Thiamine monophosphate									
+Thiamine pyrophosphate									
+Trigonelline									
+Trimethylamine Oxide									
+Urate				1					
+Uridine 5'-diphosphate									
+Uridine 5'-diphospho-N-acetylgalactosamine									
+Uridine 5'-diphospho-N-acetylglucosamine									
+Uridine 5'-diphosphoglucose									
+Uridine 5'-diphosphoglucuronic acid									
+Uridine monophosphate									
+Valeryl-carnitine							1		
+Xanthosine				1					

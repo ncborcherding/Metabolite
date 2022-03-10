@@ -1,0 +1,263 @@
+---
+title: "Taylor_Decay"
+author: "Nick Borcherding"
+date: "4/19/2019"
+output: html_document
+---
+
+#Set-Up
+
+###Loading Library
+
+This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
+```{r include=FALSE}
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl")
+
+installed = rownames(installed.packages())
+
+for (pkg in packages) {
+    if (! pkg %in% installed) {
+        install.packages(pkg)
+    }
+}
+lapply(packages, library, character.only = TRUE)
+```
+
+
+###Loading Data
+```{r}
+Liver <- read_xlsx("./data/220303_TaylorLab_Hypoxia_Liver_AJR.xlsx")
+
+path <- list.files("./data/metabolicPathways")
+pathways <- NULL
+for (i in seq_along(path)) {
+  pathways[[i]] <- read.csv(paste0("./data/metabolicPathways/", path[i]))[,1]
+  pathways[[i]] <- pathways[[i]][pathways[[i]] != ""]
+}
+names(pathways) <- path
+```
+
+
+***
+#Fiting kinetics
+
+
+```{r}
+dir.create("output")
+dir.create("output/splines")
+source("./R/functions.r")
+
+Liver<- Liver %>%
+        mutate_all(~replace(., is.na(.), F)) %>%
+        as.data.frame()
+colnames(Liver)[2] <- "Condition"
+metabolites <- colnames(data[,3:length(data)])
+
+    for (x in seq_along(metabolites)){
+        fit2 <- ss(Liver[,metabolites[x]], Liver$Condition, all.knots = TRUE)
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        
+    plot <- ggplot() + 
+                geom_point(data = Liver, aes(Condition, Liver[,metabolites[x]])) +
+                geom_smooth(data = Liver, aes(x=Condition, y=Liver[,metabolites[x]]), 
+                            formula = x ~ y,
+                            method = "smooth.spline2", color="red", lwd=0.5) + 
+                ylab(metabolites[x]) + 
+                xlab("Time") + 
+                geom_hline(yintercept = as.numeric(t50), lty=2) + 
+                geom_vline(xintercept = out, lty=2) + 
+                theme_classic()
+    
+    ggsave(paste("./output/splines/kinetics_", df[x], ".pdf", sep=""), plot, height=3, width = 4)
+    
+    }
+
+```
+
+
+
+Summarizing the spline fits across the data set
+
+```{r}
+for (x in seq_along(df)){
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        
+        if (trend > 0) {
+            range <- max(test[,2]) +  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        t50 <- range/2 + test[1,2]
+        out <- predict(fit2, x = t50)[,2]
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        output <- c(T50 = out, M50 = t50[,1], rate = rate, range = range[,1], FC = FC[,1], GCV = GCV, degF = deg, spar = spar, pen.crit = pen, ratio = ratio, lambda = lambda)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- df
+write.csv(mat,"Liver_fittedValues.csv")
+```
+
+
+#Nautilus Plots
+```{r}
+#plot <- mat[sample(nrow(mat), 30), ]
+#plot <- subset(plot, T50 > 0 & T50 < 10)
+#top <- plot[order(plot$T50),]
+#top <- top[1:5,]
+list <- list(Liver_mat, Muscle_mat)
+for (x in seq_along(list)){
+    mat <- list[[x]]
+    
+    for (i in 1:length(Pathways)){
+    plot <- mat[mat$names %in% Pathways[[i]],]   
+    plot <- subset(plot, T50 > 0 & T50 < 10)
+    top <- plot[order(plot$T50),]
+    top <- top[1:5,]
+        
+    coord <- median(-log(plot$rate))
+    
+    nautilus <- ggplot(plot, aes(x=reorder(names, T50), y=-log(rate))) + 
+        geom_hline(yintercept=c(0, round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))), lty=2, lwd=0.25, color="#999999") + 
+        geom_bar(stat = "identity", aes(fill=FC), color="black", lwd=0.25) + 
+        
+        theme_classic() +
+        geom_label_repel(data = plot[plot$names %in% top$names,], aes(label=paste(names)), label.padding = 0.1, nudge_x = 1, nudge_y = 1.5) + 
+       coord_polar() + 
+        scale_fill_gradient2(midpoint = 0, high = "#b2182b", low = "#2166ac", mid = "#f7f7f7") + 
+        theme(axis.title = element_blank(), 
+              axis.line = element_blank(),
+              axis.text = element_blank(), 
+              axis.ticks = element_blank(), 
+              legend.position="top") + 
+            #annotate("text", y=round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))/4) + 
+        annotate("text", y=round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4) + 
+        annotate("text", y=round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4) + 
+        annotate("text", y=round(max(-log(plot$rate))), x=0, label = round(max(-log(plot$rate)))) + 
+        labs(fill = "Log2-fold Change")
+    
+    ggsave(paste("Taylor_", names[x], "_" , paste(pathNames[i]), "_Nautilus_v2.pdf", sep=""), nautilus, height=4, width=5) 
+    
+    }
+}        
+```
+
+
+
+
+
+```{r}
+dir.create("output/urchin")
+for (i in 1:length(pathways)){
+mat <- as.data.frame(mat)
+plot <- mat[rownames(mat) %in% pathways[[i]],]   
+plot <- subset(plot, T50 > 0 & T50 < 10)
+plot$names <- rownames(plot)
+
+g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
+    geom_hline(yintercept = 0) + 
+    geom_vline(xintercept = 0) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_point() +
+    geom_text_repel(data=plot, aes(label=paste(names))) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin.pdf"), g, height=4, width=5) 
+}
+```
+
+
+```{r}
+mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
+mat <- as.data.frame(mat)
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0) + 
+    geom_vline(xintercept = 0) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_point() +
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
+ggsave("output/urchin/overall_Urchin.pdf", height=4, width=5) 
+
+
+mat$names <- rownames(mat)
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0) + 
+    geom_vline(xintercept = 0) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_text(aes(label = names), size = 2) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
+ggsave("output/urchin/overall_Urchin_labeled.pdf", height=8, width=10) 
+```
+
+
+
+```{r}
+data2 <- Liver
+for (i in 3:length(data2)) {
+        data2[,i] <- log(data2[,i]/mean(data2[1:5,i]),2)
+    }
+
+melted <- reshape2::melt(data2[,2:ncol(data2)], id.vars = "Condition")
+melted2 <- melted %>%
+        group_by(Condition, variable) %>%
+        summarise(mean1 = median(value, na.rm = T))
+
+    
+    
+ggplot(aes(x=Condition, y=mean1), data = melted2) + 
+        geom_hline(yintercept = 0, lty=2) +
+        geom_boxplot(outlier.alpha = 0, aes(group=Condition)) + 
+        ylab("Log2-fold Change") + 
+        theme_classic() + 
+        theme(axis.title.x = element_blank()) 
+ggsave("globalKinetics_Liver_boxplot.pdf", height=3, width = 4)
+```
+
+
+
+
