@@ -68,11 +68,9 @@ metabolites <- colnames(data[,3:length(data)])
         t50 <- t50[,1]
         out <- predict(fit2, x = t50)[,2]
         
-    plot <- ggplot() + 
-                geom_point(data = Liver, aes(Condition, Liver[,metabolites[x]])) +
-                geom_smooth(data = Liver, aes(x=Condition, y=Liver[,metabolites[x]]), 
-                            formula = x ~ y,
-                            method = "smooth.spline2", color="red", lwd=0.5) + 
+    plot <- ggplot(data = Liver, aes(Condition, Liver[,metabolites[x]])) + 
+                geom_point() +
+                #geom_smooth(method = "smooth.spline2") + 
                 ylab(metabolites[x]) + 
                 xlab("Time") + 
                 geom_hline(yintercept = as.numeric(t50), lty=2) + 
@@ -132,51 +130,7 @@ write.csv(mat,"Liver_fittedValues.csv")
 ```
 
 
-#Nautilus Plots
-```{r}
-#plot <- mat[sample(nrow(mat), 30), ]
-#plot <- subset(plot, T50 > 0 & T50 < 10)
-#top <- plot[order(plot$T50),]
-#top <- top[1:5,]
-list <- list(Liver_mat, Muscle_mat)
-for (x in seq_along(list)){
-    mat <- list[[x]]
-    
-    for (i in 1:length(Pathways)){
-    plot <- mat[mat$names %in% Pathways[[i]],]   
-    plot <- subset(plot, T50 > 0 & T50 < 10)
-    top <- plot[order(plot$T50),]
-    top <- top[1:5,]
-        
-    coord <- median(-log(plot$rate))
-    
-    nautilus <- ggplot(plot, aes(x=reorder(names, T50), y=-log(rate))) + 
-        geom_hline(yintercept=c(0, round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4, round(max(-log(plot$rate)))), lty=2, lwd=0.25, color="#999999") + 
-        geom_bar(stat = "identity", aes(fill=FC), color="black", lwd=0.25) + 
-        
-        theme_classic() +
-        geom_label_repel(data = plot[plot$names %in% top$names,], aes(label=paste(names)), label.padding = 0.1, nudge_x = 1, nudge_y = 1.5) + 
-       coord_polar() + 
-        scale_fill_gradient2(midpoint = 0, high = "#b2182b", low = "#2166ac", mid = "#f7f7f7") + 
-        theme(axis.title = element_blank(), 
-              axis.line = element_blank(),
-              axis.text = element_blank(), 
-              axis.ticks = element_blank(), 
-              legend.position="top") + 
-            #annotate("text", y=round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))/4) + 
-        annotate("text", y=round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))/4 + round(max(-log(plot$rate)))/4) + 
-        annotate("text", y=round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4, x=0, label = round(max(-log(plot$rate)))-round(max(-log(plot$rate)))/4) + 
-        annotate("text", y=round(max(-log(plot$rate))), x=0, label = round(max(-log(plot$rate)))) + 
-        labs(fill = "Log2-fold Change")
-    
-    ggsave(paste("Taylor_", names[x], "_" , paste(pathNames[i]), "_Nautilus_v2.pdf", sep=""), nautilus, height=4, width=5) 
-    
-    }
-}        
-```
-
-
-
+## Urchin Plots
 
 
 ```{r}
@@ -267,15 +221,14 @@ CI <- melted2 %>%
     
 ggplot(aes(x=Condition, y=mean1), data = melted2) + 
        # geom_boxplot(aes(group=Condition), outlier.alpha = 0) + 
-
   geom_errorbar(data = CI, 
                 aes(x = Condition, y= smean, ymin = lower_ci, ymax = upper_ci)) + 
+  geom_smooth(method = lm, 
+              formula = y ~ splines::bs(x, df = 2, degree = 2, knots = 10), color = "red") + 
         ylab("Abs(Log2-fold Change)") + 
         theme_classic() + 
         theme(axis.title.x = element_blank()) 
-        
-
-ggsave("globalKinetics_Liver_boxplot.pdf", height=3, width = 4)
+ggsave("./output/globalKinetics_Liver.pdf", height=3, width = 4)
 ```
 
 
