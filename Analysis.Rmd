@@ -11,7 +11,7 @@ output: html_document
 
 This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
 ```{r include=FALSE}
-packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl")
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg")
 
 installed = rownames(installed.packages())
 
@@ -51,7 +51,7 @@ Liver<- Liver %>%
         mutate_all(~replace(., is.na(.), F)) %>%
         as.data.frame()
 colnames(Liver)[2] <- "Condition"
-metabolites <- colnames(data[,3:length(data)])
+metabolites <- colnames(Liver[,3:length(Liver)])
 
     for (x in seq_along(metabolites)){
         fit2 <- ss(Liver[,metabolites[x]], Liver$Condition, all.knots = TRUE)
@@ -88,7 +88,7 @@ metabolites <- colnames(data[,3:length(data)])
 Summarizing the spline fits across the data set
 
 ```{r}
-for (x in seq_along(df)){
+for (x in seq_along(metabolites)){
         test <- Liver[,c("Condition", metabolites[x])] %>%
           group_by(Condition) %>%
           summarize_all(funs(mean))
@@ -125,7 +125,7 @@ for (x in seq_along(df)){
         mat <- rbind(mat, t(output))
         }
     }
-rownames(mat) <- df
+rownames(mat) <- metabolites
 write.csv(mat,"Liver_fittedValues.csv")
 ```
 
@@ -142,15 +142,15 @@ plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
-    geom_hline(yintercept = 0) + 
-    geom_vline(xintercept = 0) +
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
     theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_y_continuous(limits=c(-3,6), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7)) + 
     scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin.pdf"), g, height=4, width=5) 
 }
@@ -167,9 +167,8 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
     geom_point() +
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_y_continuous(limits=c(-3,6), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7)) + 
     scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
 ggsave("output/urchin/overall_Urchin.pdf", height=4, width=5) 
 
