@@ -162,8 +162,8 @@ mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
 mat <- as.data.frame(mat)
 
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
-    geom_hline(yintercept = 0) + 
-    geom_vline(xintercept = 0) +
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
     geom_point() +
     theme_classic() + 
@@ -180,11 +180,21 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
     geom_text(aes(label = names), size = 2) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,6), breaks = c(-3,-2,-1,1,2,3,4,5,6)) + 
+    scale_y_continuous(limits=c(-3,6), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7)) + 
     scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
-ggsave("output/urchin/overall_Urchin_labeled.pdf", height=8, width=10) 
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0) + 
+    geom_vline(xintercept = 0) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_label(aes(label = names, x=(-scale(T50))/3, y=FC/3), size = 2) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,6), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7)) + 
+    scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
+
+ggsave("output/urchin/overall_Urchin_labeled.pdf", height=100, width=100, limitsize = FALSE) 
 ```
 
 
