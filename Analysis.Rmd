@@ -139,6 +139,27 @@ write.csv(mat,"Liver_fittedValues.csv")
 ```{r}
 #mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
 dir.create("output/urchin")
+
+for (i in 1:length(pathways)){
+plot <- mat[rownames(mat) %in% pathways[[i]],]   
+plot <- subset(plot, T50 > 0 & T50 < 10)
+plot$names <- rownames(plot)
+
+g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_point() +
+    geom_text_repel(data=plot, aes(label=paste(names))) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+  scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4)) + 
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin.pdf"), g, height=5, width=5) 
+}
+
+
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
 plot <- subset(plot, T50 > 0 & T50 < 10)
@@ -288,6 +309,8 @@ x <- ss(CI$smean, CI$Condition, all.knots = TRUE)
 y <- splines::bs(CI$smean, CI$Condition, df = 2, degree = 2, knots = 10)
 y <- smooth.spline(CI$smean, CI$Condition)
 
+
+splines::bs(x, df = 2, degree = 2, knots = 10)
 ```
 
 
