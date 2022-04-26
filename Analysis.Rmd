@@ -20,13 +20,14 @@ for (pkg in packages) {
         install.packages(pkg)
     }
 }
-lapply(packages, library, character.only = TRUE)
 ```
 
 
 ###Loading Data
 ```{r}
-Liver <- read_xlsx("./data/220303_TaylorLab_Hypoxia_Liver_AJR.xlsx")
+Liver <- read_xlsx("./data/220303_TaylorLab_Hypoxia_Liver_AJR.xlsx")[,-255]
+colnames(Liver)[254] <- "Valine" #2 valine measurements, removing the second
+
 
 path <- list.files("./data/metabolicPathways")
 pathways <- NULL
@@ -126,6 +127,8 @@ for (x in seq_along(metabolites)){
         }
     }
 rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
 write.csv(mat,"Liver_fittedValues.csv")
 ```
 
@@ -137,7 +140,6 @@ write.csv(mat,"Liver_fittedValues.csv")
 #mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
 dir.create("output/urchin")
 for (i in 1:length(pathways)){
-mat <- as.data.frame(mat)
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
 plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
@@ -151,9 +153,26 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     theme_classic() + 
     theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
-    scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4))
- ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin.pdf"), g, height=4, width=5) 
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol.pdf"), g, height=5, width=5) 
+}
+
+for (i in 1:length(pathways)){
+plot <- mat[rownames(mat) %in% pathways[[i]],]   
+plot <- subset(plot, T50 > 0 & T50 < 10)
+plot$names <- rownames(plot)
+
+g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0)) + 
+    geom_point() +
+    geom_text_repel(data=plot, aes(label=paste(names))) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
 }
 ```
 
@@ -166,12 +185,19 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+ggsave("output/urchin/overall_Urchin_noXcontrol.pdf", height=5, width=5) 
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
     geom_point() +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
-    scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4))
-ggsave("output/urchin/overall_Urchin.pdf", height=4, width=5) 
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
 
 
 mat$names <- rownames(mat)
@@ -198,6 +224,23 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
 ggsave("output/urchin/overall_Urchin_labeled.pdf", height=100, width=100, limitsize = FALSE) 
 ```
 
+##############
+#Plotly
+
+```{r}
+mat$metabolite = rownames(mat)
+overall <- ggplot(mat, aes(x=-scale(T50), y=FC, text = metabolite)) + 
+              geom_hline(yintercept = 0, lty = 2) + 
+              geom_vline(xintercept = 0, lty = 2) +
+              geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+              theme_classic() + 
+              labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+              scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC")) 
+
+library(htmlwidgets)
+saveWidget(p, "p1.html", selfcontained = F, libdir = "lib")
+```
 
 
 ```{r}
