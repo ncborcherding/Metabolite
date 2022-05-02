@@ -179,6 +179,23 @@ plot <- mat[rownames(mat) %in% pathways[[i]],]
 #plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
+g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_point() +
+    geom_text_repel(data=plot, aes(label=paste(names))) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol.pdf"), g, height=5, width=5) 
+}
+
+for (i in 1:length(pathways)){
+plot <- mat[rownames(mat) %in% pathways[[i]],]   
+#plot <- subset(plot, T50 > 0 & T50 < 10)
+plot$names <- rownames(plot)
+
 g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
@@ -190,6 +207,23 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
+}
+
+for (i in 1:length(pathways)){
+plot <- mat[rownames(mat) %in% pathways[[i]],]   
+#plot <- subset(plot, T50 > 0 & T50 < 10)
+plot$names <- rownames(plot)
+
+g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0)) + 
+    geom_point() +
+    geom_text_repel(data=plot, aes(label=paste(names))) + 
+    theme_classic() + 
+    theme(line = element_blank()) + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
+ ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
 }
 ```
 
@@ -211,23 +245,10 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
-    geom_point() +
     theme_classic() + 
-    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
-
-
-mat$names <- rownames(mat)
-ggplot(mat, aes(x=-scale(T50), y=FC)) + 
-    geom_hline(yintercept = 0, lty = 2) + 
-    geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
-    geom_text(aes(label = names), size = 2) + 
-    theme_classic() + 
-    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,9)) + 
-    scale_x_continuous(limits=c(-3,3), breaks=c(-3,-2,-1,1,2,3))
-
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
+ggsave("output/urchin/overall_Urchin_noXcontrol_noYcontrol.pdf", height=5, width=5) 
+mat$names = rownames(mat)
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
@@ -257,7 +278,7 @@ p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC"))  %>%
   layout(hovermode = "x unified")
 
 library(htmlwidgets)
-saveWidget(p, "p1.html", selfcontained = F, libdir = "lib")
+saveWidget(p, "p1.html", selfcontained = T)
 ```
 
 
