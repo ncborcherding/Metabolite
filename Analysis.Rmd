@@ -20,6 +20,7 @@ for (pkg in packages) {
         install.packages(pkg)
     }
 }
+invisible(lapply(packages, library, character.only = TRUE))
 ```
 
 
@@ -49,13 +50,14 @@ dir.create("output/splines")
 source("./R/functions.r")
 
 Liver<- Liver %>%
-        mutate_all(~replace(., is.na(.), F)) %>%
+       # mutate_all(~replace(., is.na(.), F)) %>%
         as.data.frame()
 colnames(Liver)[2] <- "Condition"
 metabolites <- colnames(Liver[,3:length(Liver)])
 
     for (x in seq_along(metabolites)){
-        fit2 <- ss(Liver[,metabolites[x]], Liver$Condition, all.knots = TRUE)
+       tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        fit2 <- ss(tmp.met[,1], tmp.met[,2], all.knots = TRUE)
         test <- Liver[,c("Condition", metabolites[x])] %>%
           group_by(Condition) %>%
           na.omit() %>%
@@ -91,8 +93,8 @@ Summarizing the spline fits across the data set
 
 ```{r}
 for (x in seq_along(metabolites)){
-  tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
-        fit2 <- ss(tmp.met[,1], tmp.met[,2], all.knots = TRUE)
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
         test <- Liver[,c("Condition", metabolites[x])] %>%
           group_by(Condition) %>%
           na.omit() %>%
@@ -107,6 +109,7 @@ for (x in seq_along(metabolites)){
         t50 <- range/2 + test[1,2]
         t50 <- t50[,1]
         out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
         rate <- out/10
         GCV <- fit2$cv.crit
         deg <- fit2$df
@@ -148,7 +151,6 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
   scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4)) + 
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
@@ -168,7 +170,6 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol.pdf"), g, height=5, width=5) 
@@ -186,7 +187,6 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol.pdf"), g, height=5, width=5) 
 }
@@ -203,7 +203,6 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
@@ -221,7 +220,6 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
     theme_classic() + 
-    theme(line = element_blank()) + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
 }
