@@ -94,6 +94,12 @@ Summarizing the spline fits across the data set
 ```{r}
 for (x in seq_along(metabolites)){
         tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        tukey.results <- TukeyHSD(anova.results)
+        #################
+        #Fitting Splines
+        ################
         fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
         test <- Liver[,c("Condition", metabolites[x])] %>%
           group_by(Condition) %>%
@@ -117,7 +123,21 @@ for (x in seq_along(metabolites)){
         pen <- fit2$pen.crit
         ratio <- fit2$ratio
         lambda <- fit2$lambda
-        output <- c(T50 = out, M50 = t50, rate = rate, range = range[,1], FC = FC[,1], GCV = GCV, degF = deg, spar = spar, pen.crit = pen, ratio = ratio, lambda = lambda)
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        T0vOther <- tukey.results$`as.factor(tmp.met[, 2])`[1:4,4]
+        names(T0vOther) <- paste0("TukeyP.", names(T0vOther))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    T0vOther)
         output <- as.data.frame(output)
         if (x == 1) {
           mat <- t(output)
@@ -128,6 +148,21 @@ for (x in seq_along(metabolites)){
 rownames(mat) <- metabolites
 mat <- as.data.frame(mat)
 mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  time.placeholder <- min(which(mat[i,12:15] < 0.05))
+  if (is.null(time.placeholder) | is.na(time.placeholder)) {
+    next()
+  } else {
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
 write.csv(mat,"Liver_fittedValues.csv")
 ```
 
@@ -229,23 +264,28 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
 ```{r}
 mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
 mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
 
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
 ggsave("output/urchin/overall_Urchin_noXcontrol.pdf", height=5, width=5) 
 
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     theme_classic() + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey") + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
-ggsave("output/urchin/overall_Urchin_noXcontrol_noYcontrol.pdf", height=5, width=5) 
+ggsave("output/urchin/overall_Urchin_noXcontrol_noYcontrol.pdf", height=5, width=6.5) 
+
+
 mat$names = rownames(mat)
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
     geom_hline(yintercept = 0, lty = 2) + 
@@ -268,12 +308,12 @@ mat$metabolite = rownames(mat)
 overall <- ggplot(mat, aes(x=-scale(T50), y=FC, text = metabolite)) + 
               geom_hline(yintercept = 0, lty = 2) + 
               geom_vline(xintercept = 0, lty = 2) +
-              geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+              geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
               theme_classic() + 
+              scale_color_brewer(palette = "RdBu", na.value = "grey") + 
               labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
               scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
-p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC"))  %>%
-  layout(hovermode = "x unified")
+p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC"))  
 
 library(htmlwidgets)
 saveWidget(p, "p1.html", selfcontained = T)
