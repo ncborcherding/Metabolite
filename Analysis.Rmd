@@ -11,7 +11,7 @@ output: html_document
 
 This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
 ```{r include=FALSE}
-packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg", "dunn.test")
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg")
 
 installed = rownames(installed.packages())
 
