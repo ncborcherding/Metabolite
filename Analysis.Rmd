@@ -7,11 +7,11 @@ output: html_document
 
 #Set-Up
 
-###Loading Library
+### Loading Library
 
 This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
 ```{r include=FALSE}
-packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg")
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg", "dunn.test")
 
 installed = rownames(installed.packages())
 
@@ -21,10 +21,13 @@ for (pkg in packages) {
     }
 }
 invisible(lapply(packages, library, character.only = TRUE))
+
+source("./R/functions.r") #Loads Sidak-Holm approach for multiple hypothesis correction
 ```
 
 
-###Loading Data
+### Loading Data
+
 ```{r}
 Liver <- readxl::read_xlsx("./data/220303_TaylorLab_Hypoxia_Liver_AJR.xlsx")[,-255]
 colnames(Liver)[254] <- "Valine" #2 valine measurements, removing the second
@@ -38,65 +41,31 @@ for (i in seq_along(path)) {
 }
 names(pathways) <- path
 ```
-
-
-***
-#Fiting kinetics
-
+### Processing data toi 
 
 ```{r}
 dir.create("output")
-dir.create("output/splines")
-source("./R/functions.r")
+
 
 Liver<- Liver %>%
-       # mutate_all(~replace(., is.na(.), F)) %>%
         as.data.frame()
 colnames(Liver)[2] <- "Condition"
 metabolites <- colnames(Liver[,3:length(Liver)])
-
-    for (x in seq_along(metabolites)){
-       tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
-        fit2 <- ss(tmp.met[,1], tmp.met[,2], all.knots = TRUE)
-        test <- Liver[,c("Condition", metabolites[x])] %>%
-          group_by(Condition) %>%
-          na.omit() %>%
-          summarize_all(funs(mean))
-        trend <- max(test[,2]) - test[1,2]
-        if (trend[,1] > 0) {
-            range <- max(test[,2]) -  test[1,2]
-        } else{
-            range <- min(test[,2]) - test[1,2] 
-        }
-        t50 <- range/2 + test[1,2]
-        t50 <- t50[,1]
-        out <- predict(fit2, x = t50)[,2]
-        
-    plot <- ggplot(data = Liver, aes(Condition, Liver[,metabolites[x]])) + 
-                geom_point() +
-                #geom_smooth(method = "smooth.spline2") + 
-                ylab(metabolites[x]) + 
-                xlab("Time") + 
-                geom_hline(yintercept = as.numeric(t50), lty=2) + 
-                geom_vline(xintercept = out, lty=2) + 
-                theme_classic()
-    
-    ggsave(paste("./output/splines/kinetics_", df[x], ".pdf", sep=""), plot, height=3, width = 4)
-    
-    }
-
 ```
 
 
-
-Summarizing the spline fits across the data set
+### Summarizing the spline fits across the data set
 
 ```{r}
 for (x in seq_along(metabolites)){
         tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
-        
+        #################
+        #Stats Testing
+        ################
         anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
-        tukey.results <- TukeyHSD(anova.results)
+        wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
+        sidak.results <- Sidak(wilcox.results$p.value[,1])
+        sidak.results <- sidak.results$SidakP
         #################
         #Fitting Splines
         ################
@@ -115,7 +84,6 @@ for (x in seq_along(metabolites)){
         t50 <- range/2 + test[1,2]
         t50 <- t50[,1]
         out <- predict(fit2, x = t50)[,2]
-        #if(out > 15 | out < -15)
         rate <- out/10
         GCV <- fit2$cv.crit
         deg <- fit2$df
@@ -124,8 +92,9 @@ for (x in seq_along(metabolites)){
         ratio <- fit2$ratio
         lambda <- fit2$lambda
         anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
-        T0vOther <- tukey.results$`as.factor(tmp.met[, 2])`[1:4,4]
-        names(T0vOther) <- paste0("TukeyP.", names(T0vOther))
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
         output <- c(T50 = out, M50 = t50, 
                     rate = rate, 
                     range = range[,1], 
@@ -137,6 +106,7 @@ for (x in seq_along(metabolites)){
                     ratio = ratio, 
                     lambda = lambda, 
                     anova.p = anova.p, 
+                    kw.p = kw.p,
                     T0vOther)
         output <- as.data.frame(output)
         if (x == 1) {
@@ -156,10 +126,11 @@ time.places <- c("t0.5", "t1", "t3", "t10")
 
 mat$tp.designation <- NA
 for(i in seq_len(nrow(mat))) {
-  time.placeholder <- min(which(mat[i,12:15] < 0.05))
-  if (is.null(time.placeholder) | is.na(time.placeholder)) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
     next()
   } else {
+    time.placeholder <- min(pos)
     mat[i,]$tp.designation <- time.places[time.placeholder]
   }
 }
@@ -173,18 +144,21 @@ write.csv(mat,"Liver_fittedValues.csv")
 ```{r}
 mat <- read.csv("Liver_fittedValues.csv", row.names = 1)
 dir.create("output/urchin")
-
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+color.pal <- brewer_pal(palette = "RdBu")(4)
+names(color.pal) <- c("t0.5", "t1", "t3", "t10")
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
-#plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
+    scale_color_manual(values =color.pal, na.value = "grey") + 
+    guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
   scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4)) + 
@@ -195,15 +169,16 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
 
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
-#plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
+    scale_color_manual(values =color.pal, na.value = "grey") + 
+    guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
@@ -212,15 +187,16 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
 
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
-#plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
+    scale_color_manual(values =color.pal, na.value = "grey") + 
+    guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol.pdf"), g, height=5, width=5) 
@@ -228,15 +204,16 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
 
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
-#plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
+    scale_color_manual(values =color.pal, na.value = "grey") + 
+    guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
@@ -245,15 +222,16 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
 
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
-#plot <- subset(plot, T50 > 0 & T50 < 10)
 plot$names <- rownames(plot)
 
 g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0)) + 
+    geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
+    scale_color_manual(values =color.pal, na.value = "grey") + 
+    guides(color = "none") + 
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
  ggsave(paste0("output/urchin/", names(pathways)[i], "_Urchin_noXcontrol_noYcontrol_overallScaleT50.pdf"), g, height=5, width=5) 
@@ -273,31 +251,17 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
-  scale_color_brewer(palette = "RdBu", na.value = "grey")
-ggsave("output/urchin/overall_Urchin_noXcontrol.pdf", height=5, width=5) 
+  scale_color_manual(values =color.pal, na.value = "grey") 
+ggsave("output/urchin/overall_Urchin_noXcontrol.pdf", height=5, width=6.5) 
 
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
     geom_hline(yintercept = 0, lty = 2) + 
     geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     theme_classic() + 
-  scale_color_brewer(palette = "RdBu", na.value = "grey") + 
+  scale_color_manual(values =color.pal, na.value = "grey") + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
 ggsave("output/urchin/overall_Urchin_noXcontrol_noYcontrol.pdf", height=5, width=6.5) 
-
-
-mat$names = rownames(mat)
-ggplot(mat, aes(x=-scale(T50), y=FC)) + 
-    geom_hline(yintercept = 0, lty = 2) + 
-    geom_vline(xintercept = 0, lty = 2) +
-    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0)) + 
-    geom_label(aes(label = names, x=(-scale(T50))/3, y=FC/3), size = 2) + 
-    theme_classic() + 
-    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
-    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
-    scale_x_continuous(limits=c(-4,4), breaks=c(-4,-3,-2,-1,1,2,3,4))
-
-ggsave("output/urchin/overall_Urchin_labeled.pdf", height=100, width=100, limitsize = FALSE) 
 ```
 
 ##############
@@ -310,15 +274,16 @@ overall <- ggplot(mat, aes(x=-scale(T50), y=FC, text = metabolite)) +
               geom_vline(xintercept = 0, lty = 2) +
               geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
               theme_classic() + 
-              scale_color_brewer(palette = "RdBu", na.value = "grey") + 
+              scale_color_manual(values =color.pal, na.value = "grey") + 
               labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
               scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
 p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC"))  
 
 library(htmlwidgets)
-saveWidget(p, "p1.html", selfcontained = T)
+saveWidget(p, "./output/p1.html", selfcontained = T)
 ```
 
+## Global Kinetics graph fitting
 
 ```{r}
 data2 <- as.data.frame(Liver)

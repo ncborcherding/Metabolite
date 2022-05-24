@@ -1,0 +1,642 @@
+---
+title: "Untitled"
+author: "Nicholas Borcherding"
+date: "5/24/2022"
+output: html_document
+---
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        sidak.results <- TukeyHSD(anova.results)
+        sidak.results <- sidak.results$`as.factor(tmp.met[, 2])`[1:4,4]
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        #sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "bh"))
+        #wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "BH")
+        #sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+#sidak.results <- wilcox.results$p.value[,1]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        #sidak.results <- sidak.results$SidakP
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    kw.p = kw.p,
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_ANOVA_Tukey.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_ANOVA_Tukey.pdf", height=5, width=5) 
+```
+
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "hs"))
+        #wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "BH")
+        #sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+#sidak.results <- wilcox.results$p.value[,1]
+        sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        #sidak.results <- sidak.results$SidakP
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    kw.p = kw.p,
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_KW_HS.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_KW_HS.pdf", height=5, width=5) 
+```
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "hs"))
+        #wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "BH")
+        sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+#sidak.results <- wilcox.results$p.value[,1]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        sidak.results <- sidak.results$SidakP
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    kw.p = kw.p,
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_KW_HS_only4.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_KW_HS_only4.pdf", height=5, width=5) 
+```
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        #sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "hs"))
+        wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "BH")
+        sidak.results <-wilcox.results$p.value[,1]
+        #sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+#sidak.results <- wilcox.results$p.value[,1]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        #sidak.results <- sidak.results$SidakP
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    kw.p = kw.p,
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_KW_wilcoxBH.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_KW_wilcoxBH.pdf", height=5, width=5) 
+```
+
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        #sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "hs"))
+        wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
+        #sidak.results <-wilcox.results$p.value[,1]
+        #sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        sidak.results <- Sidak(wilcox.results$p.value[,1])
+#sidak.results <- wilcox.results$p.value[,1]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        sidak.results <- sidak.results$SidakP
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_KW_wilcoxHS_only4.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_KW_wilcoxHS_only4.pdf", height=5, width=5) 
+```
+```{r}
+for (x in seq_along(metabolites)){
+        tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        
+        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #kruskal.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        #tukey.results <- TukeyHSD(anova.results)
+        #sidak.results <- invisible(dunn.test(tmp.met[,1], g= as.factor(tmp.met[,2]), method = "hs"))
+        wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
+        #sidak.results <-wilcox.results$p.value[,1]
+        #sidak.results <- Sidak(sidak.results$P[c(1,2,4,7)])
+        sidak.results <- Sidak(na.omit(as.vector(wilcox.results$p.value)))
+#sidak.results <- wilcox.results$p.value[,1]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+       # x <- FSA::dunnTest(tmp.met[,1] ~ as.factor(tmp.met[,2]),
+                     # method = "hs")
+       # sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "hs")
+    
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        sidak.results <- sidak.results$SidakP[1:4]
+        #sidak.results <- sidak.results$P.adjusted[c(1,2,4,7)]
+        #sidak.results <- p.adjust(sidak.results$P[c(1,2,4,7)], method = "bonferroni")
+        #################
+        #Fitting Splines
+        ################
+        fit2 <- ss(tmp.met[,1], as.numeric(tmp.met[,2]), all.knots = TRUE, method = "ML")
+        test <- Liver[,c("Condition", metabolites[x])] %>%
+          group_by(Condition) %>%
+          na.omit() %>%
+          summarize_all(funs(mean))
+        trend <- max(test[,2]) - test[1,2]
+        if (trend[,1] > 0) {
+            range <- max(test[,2]) -  test[1,2]
+        } else{
+            range <- min(test[,2]) - test[1,2] 
+        }
+        FC <- log(test[5,2]/test[1,2], 2)
+        t50 <- range/2 + test[1,2]
+        t50 <- t50[,1]
+        out <- predict(fit2, x = t50)[,2]
+        #if(out > 15 | out < -15)
+        rate <- out/10
+        GCV <- fit2$cv.crit
+        deg <- fit2$df
+        spar <- fit2$spar
+        pen <- fit2$pen.crit
+        ratio <- fit2$ratio
+        lambda <- fit2$lambda
+        anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
+        kw.p <- sidak.results
+        T0vOther <- sidak.results
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        output <- c(T50 = out, M50 = t50, 
+                    rate = rate, 
+                    range = range[,1], 
+                    FC = FC[,1], 
+                    cv.crit = GCV, 
+                    degF = deg, 
+                    spar = spar, 
+                    pen.crit = pen, 
+                    ratio = ratio, 
+                    lambda = lambda, 
+                    anova.p = anova.p, 
+                    kw.p = kw.p,
+                    T0vOther)
+        output <- as.data.frame(output)
+        if (x == 1) {
+          mat <- t(output)
+        } else {
+        mat <- rbind(mat, t(output))
+        }
+    }
+rownames(mat) <- metabolites
+mat <- as.data.frame(mat)
+mat$scaled_T50 = -scale(mat[,1])
+
+############################
+#Loop through time comparison
+#############################
+time.places <- c("t0.5", "t1", "t3", "t10")
+
+mat$tp.designation <- NA
+for(i in seq_len(nrow(mat))) {
+  pos <- which(mat[i,12:15] < 0.05)
+  if (length(pos) == 0) {
+    next()
+  } else {
+    time.placeholder <- min(pos)
+    mat[i,]$tp.designation <- time.places[time.placeholder]
+  }
+}
+write.csv(mat,"Liver_fittedValues_KW_wilcoxHS.csv")
+
+mat <- as.data.frame(mat)
+mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
+
+ggplot(mat, aes(x=-scale(T50), y=FC)) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    geom_vline(xintercept = 0, lty = 2) +
+    geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
+    theme_classic() + 
+    labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
+    scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
+  scale_color_brewer(palette = "RdBu", na.value = "grey")
+ggsave("output/urchin/overall_KW_wilcoxHS.pdf", height=5, width=5) 
+```
+
