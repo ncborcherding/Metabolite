@@ -63,9 +63,11 @@ for (x in seq_along(metabolites)){
         #Stats Testing
         ################
         anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
-        wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
-        sidak.results <- Sidak(wilcox.results$p.value[,1])
-        sidak.results <- sidak.results$SidakP
+        kw.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
+        tukey.results <- TukeyHSD(anova.results)
+        #wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
+        #sidak.results <- Sidak(wilcox.results$p.value[,1])
+        #sidak.results <- sidak.results$SidakP
         #################
         #Fitting Splines
         ################
@@ -92,9 +94,9 @@ for (x in seq_along(metabolites)){
         ratio <- fit2$ratio
         lambda <- fit2$lambda
         anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
-        kw.p <- sidak.results
-        T0vOther <- sidak.results
-        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
+        kw.p <- kw.results$p.value
+        T0vOther <- tukey.results$`as.factor(tmp.met[, 2])`[1:4,4]
+        names(T0vOther) <- paste0("TukeyP.", c("t0.5", "t1", "t3", "t10"))
         output <- c(T50 = out, M50 = t50, 
                     rate = rate, 
                     range = range[,1], 
@@ -117,6 +119,8 @@ for (x in seq_along(metabolites)){
     }
 rownames(mat) <- metabolites
 mat <- as.data.frame(mat)
+mat$anova.FDR <- p.adjust(mat$anova.p)
+mat$kw.FDR <- p.adjust(mat$kw.p)
 mat$scaled_T50 = -scale(mat[,1])
 
 ############################
@@ -126,7 +130,7 @@ time.places <- c("t0.5", "t1", "t3", "t10")
 
 mat$tp.designation <- NA
 for(i in seq_len(nrow(mat))) {
-  pos <- which(mat[i,12:15] < 0.05)
+  pos <- which(mat[i,13:16] < 0.05)
   if (length(pos) == 0) {
     next()
   } else {
@@ -325,15 +329,5 @@ ggplot(aes(x=Condition, y=mean1), data = melted2) +
         theme_classic() + 
         theme(axis.title.x = element_blank()) 
 ggsave("./output/globalKinetics_Liver.pdf", height=3, width = 4)
-
-x <- ss(CI$smean, CI$Condition, all.knots = TRUE)
-y <- splines::bs(CI$smean, CI$Condition, df = 2, degree = 2, knots = 10)
-y <- smooth.spline(CI$smean, CI$Condition)
-
-
-splines::bs(x, df = 2, degree = 2, knots = 10)
 ```
-
-
-
 
