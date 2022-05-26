@@ -57,17 +57,19 @@ metabolites <- colnames(Liver[,3:length(Liver)])
 ### Summarizing the spline fits across the data set
 
 ```{r}
+options(digits=5)
+options(scipen = 5)
 for (x in seq_along(metabolites)){
         tmp.met <- na.omit(data.frame(metabolites = Liver[,metabolites[x]], Condition = Liver$Condition))
+        tmp.met2 <- tmp.met
+        tmp.met2[,1] <- log(tmp.met2[,1])
         #################
         #Stats Testing
         ################
-        anova.results <- aov(tmp.met[,1] ~ as.factor(tmp.met[,2]))
-        kw.results <- kruskal.test(tmp.met[,1] ~ as.factor(tmp.met[,2]))
-        tukey.results <- TukeyHSD(anova.results)
-        #wilcox.results <- pairwise.wilcox.test(tmp.met[,1], as.factor(tmp.met[,2]), p.adjust.method = "none")
-        #sidak.results <- Sidak(wilcox.results$p.value[,1])
-        #sidak.results <- sidak.results$SidakP
+        anova.results <- aov(tmp.met2[,1] ~ as.factor(tmp.met2[,2]))
+        kw.results <- kruskal.test(tmp.met2[,1] ~ as.factor(tmp.met2[,2]))
+        pwtt.results <- pairwise.t.test(tmp.met2[,1], as.factor(tmp.met2[,2]), p.adjust.method = "none")
+        sidak.results <- Sidak(pwtt.results$p.value[1:4,1])
         #################
         #Fitting Splines
         ################
@@ -95,8 +97,8 @@ for (x in seq_along(metabolites)){
         lambda <- fit2$lambda
         anova.p <- summary(anova.results)[[1]][["Pr(>F)"]][1]
         kw.p <- kw.results$p.value
-        T0vOther <- tukey.results$`as.factor(tmp.met[, 2])`[1:4,4]
-        names(T0vOther) <- paste0("TukeyP.", c("t0.5", "t1", "t3", "t10"))
+        T0vOther <- sidak.results$SidakP
+        names(T0vOther) <- paste0("SidakP.", c("t0.5", "t1", "t3", "t10"))
         output <- c(T50 = out, M50 = t50, 
                     rate = rate, 
                     range = range[,1], 
