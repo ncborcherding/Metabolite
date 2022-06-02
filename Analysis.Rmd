@@ -11,7 +11,7 @@ output: html_document
 
 This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
 ```{r include=FALSE}
-packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg", "Rmpfr")
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "plotly", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg", "Rmpfr")
 
 installed = rownames(installed.packages())
 
@@ -29,8 +29,7 @@ source("./R/functions.r") #Loads Sidak-Holm approach for multiple hypothesis cor
 ### Loading Data
 
 ```{r}
-Liver <- readxl::read_xlsx("./data/220303_TaylorLab_Hypoxia_Liver_AJR.xlsx")[,-255]
-colnames(Liver)[254] <- "Valine" #2 valine measurements, removing the second
+Liver <- readxl::read_xlsx("./data/220601_LiverData_alpha0.01outlier.xlsx")[,-255]
 
 
 path <- list.files("./data/metabolicPathways")
@@ -41,7 +40,7 @@ for (i in seq_along(path)) {
 }
 names(pathways) <- path
 ```
-### Processing data toi 
+### Processing data 
 
 ```{r}
 dir.create("output")
