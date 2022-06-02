@@ -11,7 +11,7 @@ output: html_document
 
 This block of code will check if you have the necessary packages installed to run the functions and load them into your environment.
 ```{r include=FALSE}
-packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg")
+packages=c("scales", "dplyr", "Rtsne", "ggplot2", "RColorBrewer", "broom", "tidyr", "corrr", "tidygraph", "limma", "ggrepel", "reshape2", "ggraph", "readxl", "npreg", "Rmpfr")
 
 installed = rownames(installed.packages())
 
@@ -151,8 +151,10 @@ write.csv(mat,"./output/Liver_fittedValues.csv")
 mat <- read.csv("./output/Liver_fittedValues.csv", row.names = 1)
 dir.create("output/urchin")
 mat$tp.designation <- factor(mat$tp.designation, levels =  c("t0.5", "t1", "t3", "t10"))
-color.pal <- brewer_pal(palette = "RdBu")(4)
-color.pal[2] <- "#D6604D"
+
+color.pal <- c("#CA0020", "#EDA835", "#83B2C9", "#0558A1")
+
+ #color change requested by senior author
 names(color.pal) <- c("t0.5", "t1", "t3", "t10")
 for (i in 1:length(pathways)){
 plot <- mat[rownames(mat) %in% pathways[[i]],]   
@@ -164,7 +166,7 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
-    scale_color_manual(values =color.pal, na.value = "#222222") + 
+    scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
@@ -184,7 +186,7 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
-    scale_color_manual(values =color.pal, na.value = "grey") + 
+    scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
@@ -202,7 +204,7 @@ g <- ggplot(plot, aes(x=-scale(T50), y=FC, group = "names")) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
-    scale_color_manual(values =color.pal, na.value = "grey") + 
+    scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
@@ -219,7 +221,7 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
     geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
-    scale_color_manual(values =color.pal, na.value = "grey") + 
+    scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     guides(color = "none") +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
@@ -237,7 +239,7 @@ g <- ggplot(plot, aes(x=scaled_T50, y=FC, group = "names")) +
     geom_segment(aes(xend=scaled_T50, yend=FC, x=0, y=0, color = tp.designation)) + 
     geom_point() +
     geom_text_repel(data=plot, aes(label=paste(names))) + 
-    scale_color_manual(values =color.pal, na.value = "grey") + 
+    scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     guides(color = "none") + 
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
@@ -258,7 +260,7 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     theme_classic() + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
     scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) + 
-  scale_color_manual(values =color.pal, na.value = "grey") 
+  scale_color_manual(values =color.pal, na.value = "#D6D6D6") 
 ggsave("output/urchin/overall_Urchin_noXcontrol.pdf", height=5, width=6.5) 
 
 ggplot(mat, aes(x=-scale(T50), y=FC)) + 
@@ -266,7 +268,7 @@ ggplot(mat, aes(x=-scale(T50), y=FC)) +
     geom_vline(xintercept = 0, lty = 2) +
     geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
     theme_classic() + 
-  scale_color_manual(values =color.pal, na.value = "grey") + 
+  scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
     labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  
 ggsave("output/urchin/overall_Urchin_noXcontrol_noYcontrol.pdf", height=5, width=6.5) 
 ```
@@ -281,7 +283,7 @@ overall <- ggplot(mat, aes(x=-scale(T50), y=FC, text = metabolite)) +
               geom_vline(xintercept = 0, lty = 2) +
               geom_segment(aes(xend=-scale(T50), yend=FC, x=0, y=0, color = tp.designation)) + 
               theme_classic() + 
-              scale_color_manual(values =color.pal, na.value = "grey") + 
+              scale_color_manual(values =color.pal, na.value = "#D6D6D6") + 
               labs(x = "t50 (Z-score)", y="Metabolite Fold-change")  +
               scale_y_continuous(limits=c(-3,8), breaks = c(-4,-3,-2,-1,1,2,3,4,5,6,7,8)) 
 p <- ggplotly(overall, tooltip=c("text", "-scale(T50)", "FC"))  
@@ -327,6 +329,8 @@ t50 <- (CI$smean[5] - CI$smean[1])/2 + CI$smean[1]
 
 fit2 <- ss(melted2[,3], melted2[,1], all.knots = TRUE, method = "ML")
 out <- as.numeric(predict(fit2, x = t50))
+
+print(paste0("t50 = ", round(out[2], 2), " +/- ", round(1.96*out[3],3)))
 
 ggplot(aes(x=Condition, y=mean1), data = melted2) + 
        # geom_boxplot(aes(group=Condition), outlier.alpha = 0) + 
